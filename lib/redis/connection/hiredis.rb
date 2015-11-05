@@ -6,6 +6,9 @@ require "timeout"
 class Redis
   module Connection
     class Hiredis
+      
+      RDS_READONLY_ERROR = "READONLY You can't write against a read only slave.".freeze
+      RDS_READONLY_MESSAGE = "A write operation was issued to an RDS slave node.".freeze
 
       def self.connect(config)
         connection = ::Hiredis::Connection.new
@@ -49,8 +52,16 @@ class Redis
 
       def read
         reply = @connection.read
-        reply = CommandError.new(reply.message) if reply.is_a?(RuntimeError)
+        if reply.is_a?(RuntimeError)
+          if reply.message.strip == RDS_READONLY_ERROR
+            raise BaseConnectionError
+          else
+            reply = CommandError.new(reply.message) 
+          end
+        end
         reply
+      rescue BaseConnectionError
+        raise ConnectionError, RDS_READONLY_MESSAGE
       rescue Errno::EAGAIN
         raise TimeoutError
       rescue RuntimeError => err
