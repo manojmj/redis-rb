@@ -203,8 +203,6 @@ class Redis
       COLON    = ":".freeze
       DOLLAR   = "$".freeze
       ASTERISK = "*".freeze
-      READONLY_ERROR = "READONLY You can't write against a read only slave.".freeze
-      READONLY_MESSAGE = "A write operation was issued to an RDS slave node.".freeze
 
       def self.connect(config)
         if config[:scheme] == "unix"
@@ -292,12 +290,7 @@ class Redis
       end
 
       def format_error_reply(line)
-        error_message = line.strip
-        if error_message == READONLY_ERROR
-          raise BaseConnectionError, READONLY_MESSAGE
-        else
-          CommandError.new(error_message)
-        end
+        CommandError.new(line.strip)
       end
 
       def format_status_reply(line)
